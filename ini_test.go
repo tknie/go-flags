@@ -903,6 +903,51 @@ func TestIniOverrides(t *testing.T) {
 	assertString(t, opts.ValueWithDefaultOverrideCli, "cli-value")
 }
 
+func TestIniOverridesFromConfigFlag(t *testing.T) {
+	file, err := ioutil.TempFile("", "")
+
+	if err != nil {
+		t.Fatalf("Cannot create temporary file: %s", err)
+	}
+
+	defer os.Remove(file.Name())
+
+	_, err = file.WriteString("value-with-default = \"ini-value\"\n")
+	_, err = file.WriteString("value-with-default-override-cli = \"ini-value\"\n")
+
+	if err != nil {
+		t.Fatalf("Cannot write to temporary file: %s", err)
+	}
+
+	file.Close()
+
+	var opts struct {
+		Config                      func(filename string) `long:"config"`
+		ValueWithDefault            string                `long:"value-with-default" default:"value"`
+		ValueWithDefaultOverrideCli string                `long:"value-with-default-override-cli" default:"value"`
+	}
+
+	p := NewParser(&opts, Default)
+
+	opt := p.FindOptionByLongName("config")
+	opt.Default = []string{file.Name()}
+
+	opts.Config = func(filename string) {
+		parser := NewIniParser(p)
+		parser.ParseAsDefaults = true
+		parser.ParseFile(filename)
+	}
+
+	_, err = p.ParseArgs([]string{"--value-with-default-override-cli", "cli-value"})
+
+	if err != nil {
+		t.Fatalf("Failed to parse arguments: %s", err)
+	}
+
+	assertString(t, opts.ValueWithDefault, "ini-value")
+	assertString(t, opts.ValueWithDefaultOverrideCli, "cli-value")
+}
+
 func TestIniRequired(t *testing.T) {
 	var opts struct {
 		Required string               `short:"r" required:"yes" description:"required"`
@@ -924,6 +969,30 @@ func TestIniRequired(t *testing.T) {
 	}
 
 	assertString(t, opts.Required, "cli-value")
+}
+
+func TestIniRequiredSlice_ShouldNotNeedToBeSpecifiedOnCli(t *testing.T) {
+	type options struct {
+		Items []string `long:"item" required:"true"`
+	}
+	var opts options
+	ini := `
+[Application Options]
+item=abc`
+	args := []string{}
+
+	parser := NewParser(&opts, Default)
+	inip := NewIniParser(parser)
+
+	inip.Parse(strings.NewReader(ini))
+
+	_, err := parser.ParseArgs(args)
+
+	if err != nil {
+		t.Fatalf("Unexpected failure: %v", err)
+	}
+
+	assertString(t, opts.Items[0], "abc")
 }
 
 func TestWriteFile(t *testing.T) {

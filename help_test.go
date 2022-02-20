@@ -107,7 +107,7 @@ func TestHelp(t *testing.T) {
 
 		if runtime.GOOS == "windows" {
 			expected = `Usage:
-  TestHelp [OPTIONS] [filename] [num] [hidden-in-help] <bommand | command | parent>
+  TestHelp [OPTIONS] [filename] [num] hidden-in-help <bommand | command | parent>
 
 Application Options:
   /v, /verbose                              Show verbose debug information
@@ -156,7 +156,7 @@ Available commands:
 `
 		} else {
 			expected = `Usage:
-  TestHelp [OPTIONS] [filename] [num] [hidden-in-help] <bommand | command | parent>
+  TestHelp [OPTIONS] [filename] [num] hidden-in-help <bommand | command | parent>
 
 Application Options:
   -v, --verbose                             Show verbose debug information
@@ -216,7 +216,7 @@ func TestMan(t *testing.T) {
 	var opts helpOptions
 	p := NewNamedParser("TestMan", HelpFlag)
 	p.ShortDescription = "Test manpage generation"
-	p.LongDescription = "This is a somewhat `longer' description of what this does"
+	p.LongDescription = "This is a somewhat `longer' description of what this does.\nWith multiple lines."
 	p.AddGroup("Application Options", "The application options", &opts)
 
 	for _, cmd := range p.Commands() {
@@ -244,7 +244,8 @@ TestMan \- Test manpage generation
 .SH SYNOPSIS
 \fBTestMan\fP [OPTIONS]
 .SH DESCRIPTION
-This is a somewhat \fBlonger\fP description of what this does
+This is a somewhat \fBlonger\fP description of what this does.
+With multiple lines.
 .SH OPTIONS
 .SS Application Options
 The application options
@@ -386,6 +387,91 @@ Help Options:
 		}
 
 		assertDiff(t, e.Message, expected, "help message")
+	}
+}
+
+func TestHiddenCommandNoBuiltinHelp(t *testing.T) {
+	oldEnv := EnvSnapshot()
+	defer oldEnv.Restore()
+	os.Setenv("ENV_DEFAULT", "env-def")
+
+	// no auto added help group
+	p := NewNamedParser("TestHelpCommand", 0)
+	// and no usage information either
+	p.Usage = ""
+
+	// add custom help group which is not listed in --help output
+	var help struct {
+		ShowHelp func() error `short:"h" long:"help"`
+	}
+	help.ShowHelp = func() error {
+		return &Error{Type: ErrHelp}
+	}
+	hlpgrp, err := p.AddGroup("Help Options", "", &help)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	hlpgrp.Hidden = true
+	hlp := p.FindOptionByLongName("help")
+	hlp.Description = "Show this help message"
+	// make sure the --help option is hidden
+	hlp.Hidden = true
+
+	// add a hidden command
+	var hiddenCmdOpts struct {
+		Foo        bool `short:"f" long:"very-long-foo-option" description:"Very long foo description"`
+		Bar        bool `short:"b" description:"Option bar"`
+		Positional struct {
+			PositionalFoo string `positional-arg-name:"<positional-foo>" description:"positional foo"`
+		} `positional-args:"yes"`
+	}
+	cmdHidden, err := p.Command.AddCommand("hidden", "Hidden command description", "Long hidden command description", &hiddenCmdOpts)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	// make it hidden
+	cmdHidden.Hidden = true
+	if len(cmdHidden.Options()) != 2 {
+		t.Fatalf("unexpected options count")
+	}
+	// which help we ask for explicitly
+	_, err = p.ParseArgs([]string{"hidden", "--help"})
+
+	if err == nil {
+		t.Fatalf("Expected help error")
+	}
+	if e, ok := err.(*Error); !ok {
+		t.Fatalf("Expected flags.Error, but got %T", err)
+	} else {
+		if e.Type != ErrHelp {
+			t.Errorf("Expected flags.ErrHelp type, but got %s", e.Type)
+		}
+
+		var expected string
+
+		if runtime.GOOS == "windows" {
+			expected = `Usage:
+  TestHelpCommand hidden [hidden-OPTIONS] [<positional-foo>]
+
+Long hidden command description
+
+[hidden command arguments]
+  <positional-foo>:         positional foo
+`
+		} else {
+			expected = `Usage:
+  TestHelpCommand hidden [hidden-OPTIONS] [<positional-foo>]
+
+Long hidden command description
+
+[hidden command arguments]
+  <positional-foo>:         positional foo
+`
+		}
+		h := &bytes.Buffer{}
+		p.WriteHelp(h)
+
+		assertDiff(t, h.String(), expected, "help message")
 	}
 }
 
@@ -590,10 +676,10 @@ func TestWroteHelp(t *testing.T) {
 		isHelp bool
 	}
 	tests := map[string]testInfo{
-		"No error":    testInfo{value: nil, isHelp: false},
-		"Plain error": testInfo{value: errors.New("an error"), isHelp: false},
-		"ErrUnknown":  testInfo{value: newError(ErrUnknown, "an error"), isHelp: false},
-		"ErrHelp":     testInfo{value: newError(ErrHelp, "an error"), isHelp: true},
+		"No error":    {value: nil, isHelp: false},
+		"Plain error": {value: errors.New("an error"), isHelp: false},
+		"ErrUnknown":  {value: newError(ErrUnknown, "an error"), isHelp: false},
+		"ErrHelp":     {value: newError(ErrHelp, "an error"), isHelp: true},
 	}
 
 	for name, test := range tests {
