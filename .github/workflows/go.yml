@@ -1,0 +1,39 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.20'
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Install dependencies
+      run: go get -v golang.org/x/lint/golint
+
+    - name: Test
+      run: go test -v ./...
+
+    - name: Format
+      run: exit $(gofmt -l . | wc -l)
+
+    - name: Linting
+      run: |
+        go tool vet -all=true -v=true . || true
+        $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/golint ./...
