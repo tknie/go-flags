@@ -188,8 +188,8 @@ func (c *completion) complete(args []string) []Completion {
 		}
 
 		if argumentIsOption(arg) {
-			prefix, optname, islong := stripOptionPrefix(arg)
-			optname, _, argument := splitOption(prefix, optname, islong)
+			_, optname, islong := stripOptionPrefix(arg)
+			optname, _, argument := splitOption(optname, islong)
 
 			if argument == nil {
 				var o *Option
@@ -250,7 +250,7 @@ func (c *completion) complete(args []string) []Completion {
 	} else if argumentStartsOption(lastarg) {
 		// Complete the option
 		prefix, optname, islong := stripOptionPrefix(lastarg)
-		optname, split, argument := splitOption(prefix, optname, islong)
+		optname, split, argument := splitOption(optname, islong)
 
 		if argument == nil && !islong {
 			rname, n := utf8.DecodeRuneInString(optname)
