@@ -9,7 +9,7 @@ arch:
     - ppc64le
 
 go:
-  - 1.16.x
+  - 1.20.x
 
 install:
   # go-flags
