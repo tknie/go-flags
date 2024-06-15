@@ -279,8 +279,8 @@ func (p *Parser) ParseArgs(args []string) ([]string, error) {
 			continue
 		}
 
-		_, optname, islong := stripOptionPrefix(arg)
-		optname, _, argument := splitOption(optname, islong)
+		prefix, optname, islong := stripOptionPrefix(arg)
+		optname, _, argument := splitOption(prefix, optname, islong)
 
 		if islong {
 			err = p.parseLong(s, optname, argument)
