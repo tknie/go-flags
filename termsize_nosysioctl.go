@@ -4,5 +4,5 @@
 package flags
 
 func getTerminalColumns() int {
-	return 80
+	return defaultTermSize
 }

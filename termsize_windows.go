@@ -4,6 +4,7 @@
 package flags
 
 import (
+	"flag"
 	"syscall"
 	"unsafe"
 )
@@ -66,21 +67,23 @@ func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, er
 }
 
 func getTerminalColumns() int {
-	defaultWidth := 80
+	if flag.Lookup("test.v") != nil {
+		return defaultTermSize
+	}
 
 	stdoutHandle, err := getStdHandle(syscall.STD_OUTPUT_HANDLE)
 	if err != nil {
-		return defaultWidth
+		return defaultTermSize
 	}
 
 	info, err := GetConsoleScreenBufferInfo(stdoutHandle)
 	if err != nil {
-		return defaultWidth
+		return defaultTermSize
 	}
 
 	if info.MaximumWindowSize.X > 0 {
 		return int(info.MaximumWindowSize.X)
 	}
 
-	return defaultWidth
+	return defaultTermSize
 }

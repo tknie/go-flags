@@ -153,7 +153,7 @@ Arguments:
 Available commands:
   bommand  A command with only hidden options
   command  A command (aliases: cm, cmd)
-  parent   A command with a sub command
+  parent   A parent command
 `
 		} else {
 			expected = `Usage:
