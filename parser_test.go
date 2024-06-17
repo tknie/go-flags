@@ -101,7 +101,7 @@ func TestDefaults(t *testing.T) {
 		{
 			msg:         "non-zero value arguments, expecting overwritten arguments",
 			args:        []string{"-3=true"},
-			expectedErr: "bool flag `-3' cannot have an argument",
+			expectedErr: "bool flag `" + makeShortName("3") + "' cannot have an argument",
 		},
 		{
 			msg:  "zero value arguments, expecting overwritten arguments",
