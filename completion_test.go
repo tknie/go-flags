@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -81,6 +82,14 @@ type completionTest struct {
 
 var completionTests []completionTest
 
+func makeLongName(option string) string {
+	return defaultLongOptDelimiter + option
+}
+
+func makeShortName(option string) string {
+	return string(defaultShortOptDelimiter) + option
+}
+
 func init() {
 	_, sourcefile, _, _ := runtime.Caller(0)
 	completionTestSourcedir := filepath.Join(filepath.SplitList(path.Dir(sourcefile))...)
@@ -97,15 +106,15 @@ func init() {
 	completionTests = []completionTest{
 		{
 			// Short names
-			[]string{"-"},
-			[]string{"--debug", "--required", "--verbose", "--version", "-i"},
+			[]string{makeShortName("")},
+			[]string{makeLongName("debug"), makeLongName("required"), makeLongName("verbose"), makeLongName("version"), makeShortName("i")},
 			false,
 		},
 
 		{
 			// Short names full
-			[]string{"-i"},
-			[]string{"-i"},
+			[]string{makeShortName("i")},
+			[]string{makeShortName("i")},
 			false,
 		},
 
@@ -137,8 +146,8 @@ func init() {
 
 		{
 			// Long names partial
-			[]string{"--ver"},
-			[]string{"--verbose", "--version"},
+			[]string{makeLongName("ver")},
+			[]string{makeLongName("verbose"), makeLongName("version")},
 			false,
 		},
 
@@ -197,69 +206,69 @@ func init() {
 
 		{
 			// Flag filename
-			[]string{"rm", "-f", path.Join(completionTestSourcedir, "completion")},
+			[]string{"rm", makeShortName("f"), filepath.Join(completionTestSourcedir, "completion")},
 			completionTestFilename,
 			false,
 		},
 
 		{
 			// Flag short concat last filename
-			[]string{"rm", "-of", path.Join(completionTestSourcedir, "completion")},
+			[]string{"rm", "-of", filepath.Join(completionTestSourcedir, "completion")},
 			completionTestFilename,
 			false,
 		},
 
 		{
 			// Flag concat filename
-			[]string{"rm", "-f" + path.Join(completionTestSourcedir, "completion")},
+			[]string{"rm", "-f" + filepath.Join(completionTestSourcedir, "completion")},
 			[]string{"-f" + completionTestFilename[0], "-f" + completionTestFilename[1]},
 			false,
 		},
 
 		{
 			// Flag equal concat filename
-			[]string{"rm", "-f=" + path.Join(completionTestSourcedir, "completion")},
+			[]string{"rm", "-f=" + filepath.Join(completionTestSourcedir, "completion")},
 			[]string{"-f=" + completionTestFilename[0], "-f=" + completionTestFilename[1]},
 			false,
 		},
 
 		{
 			// Flag concat long filename
-			[]string{"rm", "--filename=" + path.Join(completionTestSourcedir, "completion")},
+			[]string{"rm", "--filename=" + filepath.Join(completionTestSourcedir, "completion")},
 			[]string{"--filename=" + completionTestFilename[0], "--filename=" + completionTestFilename[1]},
 			false,
 		},
 
 		{
 			// Flag long filename
-			[]string{"rm", "--filename", path.Join(completionTestSourcedir, "completion")},
+			[]string{"rm", "--filename", filepath.Join(completionTestSourcedir, "completion")},
 			completionTestFilename,
 			false,
 		},
 
 		{
 			// To subdir
-			[]string{"rm", "--filename", path.Join(completionTestSourcedir, "examples/bash-")},
-			[]string{path.Join(completionTestSourcedir, "examples/bash-completion/")},
+			[]string{"rm", "--filename", filepath.Join(completionTestSourcedir, "examples/bash-")},
+			[]string{filepath.Join(completionTestSourcedir, "examples/bash-completion/")},
 			false,
 		},
 
 		{
 			// Subdirectory
-			[]string{"rm", "--filename", path.Join(completionTestSourcedir, "examples") + "/"},
+			[]string{"rm", "--filename", filepath.Join(completionTestSourcedir, "examples") + "/"},
 			completionTestSubdir,
 			false,
 		},
 
 		{
 			// Custom completed
-			[]string{"rename", "-c", "hello un"},
+			[]string{"rename", makeShortName("c"), "hello un"},
 			[]string{"hello universe"},
 			false,
 		},
 		{
 			// Multiple flag filename
-			[]string{"add-multi-flag", "-f", filepath.Join(completionTestSourcedir, "completion")},
+			[]string{"add-multi-flag", makeShortName("f"), filepath.Join(completionTestSourcedir, "completion")},
 			completionTestFilename,
 			false,
 		},
@@ -281,6 +290,9 @@ func TestCompletion(t *testing.T) {
 		for i, v := range ret {
 			items[i] = v.Item
 		}
+
+		sort.Strings(items)
+		sort.Strings(test.Completed)
 
 		if !reflect.DeepEqual(items, test.Completed) {
 			t.Errorf("Args: %#v, %#v\n  Expected: %#v\n  Got:     %#v", test.Args, test.ShowDescriptions, test.Completed, items)

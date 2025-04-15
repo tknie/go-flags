@@ -2,13 +2,11 @@ package flags
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"path"
 	"runtime"
 	"testing"
+
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func assertCallerInfo() (string, int) {
@@ -128,50 +126,18 @@ func assertParseFail(t *testing.T, typ ErrorType, msg string, data interface{}, 
 	return ret
 }
 
-func diff(a, b string) (string, error) {
-	atmp, err := ioutil.TempFile("", "help-diff")
-
-	if err != nil {
-		return "", err
-	}
-
-	btmp, err := ioutil.TempFile("", "help-diff")
-
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := io.WriteString(atmp, a); err != nil {
-		return "", err
-	}
-
-	if _, err := io.WriteString(btmp, b); err != nil {
-		return "", err
-	}
-
-	ret, err := exec.Command("diff", "-u", "-d", "--label", "got", atmp.Name(), "--label", "expected", btmp.Name()).Output()
-
-	os.Remove(atmp.Name())
-	os.Remove(btmp.Name())
-
-	if err.Error() == "exit status 1" {
-		return string(ret), nil
-	}
-
-	return string(ret), err
-}
-
 func assertDiff(t *testing.T, actual, expected, msg string) {
 	if actual == expected {
 		return
 	}
 
-	ret, err := diff(actual, expected)
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(actual, expected, false)
 
-	if err != nil {
-		assertErrorf(t, "Unexpected diff error: %s", err)
-		assertErrorf(t, "Unexpected %s, expected:\n\n%s\n\nbut got\n\n%s", msg, expected, actual)
-	} else {
-		assertErrorf(t, "Unexpected %s:\n\n%s", msg, ret)
+	if len(diffs) == 0 {
+		return
 	}
+
+	pretty := dmp.DiffPrettyText(diffs)
+	assertErrorf(t, "Unexpected %s:\n\n%s", msg, pretty)
 }
