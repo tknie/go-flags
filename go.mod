@@ -1,8 +1,10 @@
 module github.com/jessevdk/go-flags
 
-go 1.20
+go 1.23.0
+
+toolchain go1.24.1
 
 require (
 	github.com/sergi/go-diff v1.3.1
-	golang.org/x/sys v0.21.0
+	golang.org/x/sys v0.32.0
 )
